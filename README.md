@@ -22,16 +22,16 @@
 
 ## Models
 
-| Model | Version | Context | Highlight |
-|-------|---------|---------|-----------|
-| openapi-omni | v2.1 | 1M → 2M | Flagship omni-modal, 718B MoE |
-| openapi-vision | v1.8 | 256K | Vision specialist, MMMU 86.2% |
-| openapi-flash | v1.5 | 1M | Ultra-fast, 180 tok/s |
-| openapi-thinker | v2.0 | 256K | Reasoning, AIME 91.3% |
-| openapi-audio | v0.9 | 256K | Speech & audio |
-| openapi-lite | v1.2 | 32K | 8B edge-ready |
-| openapi-coder | v1.7 | 200K | SWE-bench 82.4% |
-| openapi-creative | v0.8 | 128K | Design & writing |
+| Model            | Version | Context | Highlight                     |
+| ---------------- | ------- | ------- | ----------------------------- |
+| openapi-omni     | v2.1    | 1M → 2M | Flagship omni-modal, 718B MoE |
+| openapi-vision   | v1.8    | 256K    | Vision specialist, MMMU 86.2% |
+| openapi-flash    | v1.5    | 1M      | Ultra-fast, 180 tok/s         |
+| openapi-thinker  | v2.0    | 256K    | Reasoning, AIME 91.3%         |
+| openapi-audio    | v0.9    | 256K    | Speech & audio                |
+| openapi-lite     | v1.2    | 32K     | 8B edge-ready                 |
+| openapi-coder    | v1.7    | 200K    | SWE-bench 82.4%               |
+| openapi-creative | v0.8    | 128K    | Design & writing              |
 
 ## Development
 
@@ -82,3 +82,5 @@ Branch from `master`, open a PR. CI must pass; preview deployments are generated
 ## License
 
 MIT
+
+<!-- preview test 2026-08-24T07:43:05.6765393+08:00 -->
