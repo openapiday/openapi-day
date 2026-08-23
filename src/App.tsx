@@ -139,8 +139,9 @@ function useCountdown(targetHour = 0) {
   }, [targetHour])
   return s
 }
-function Header({ onGetKey }: { onGetKey: () => void }) {
+function Header({ onGetKey, onShowChangelog }: { onGetKey: () => void; onShowChangelog: () => void }) {
   const { t, lang, setLang } = useI18n()
+  const [menuOpen, setMenuOpen] = useState(false)
   return (
     <header className="sticky top-0 z-50 border-b border-zinc-200/60 bg-white/70 backdrop-blur-xl supports-[backdrop-filter]:bg-white/60 dark:border-white/[0.06] dark:bg-zinc-950/60">
       <div className="mx-auto flex h-[56px] max-w-[1160px] items-center justify-between gap-4 px-4 sm:px-6">
@@ -174,7 +175,11 @@ function Header({ onGetKey }: { onGetKey: () => void }) {
               {t('nav.docs')}
             </a>
             <a
-              href="#changelog"
+              href="#"
+              onClick={(e) => {
+                e.preventDefault()
+                onShowChangelog()
+              }}
               className="rounded-md px-3 py-1.5 text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-white/[0.06] dark:hover:text-white"
             >
               {t('nav.changelog')}
@@ -213,8 +218,62 @@ function Header({ onGetKey }: { onGetKey: () => void }) {
           >
             {t('nav.getKey')} <ArrowRight className="size-3.5" />
           </button>
+          <button
+            onClick={() => setMenuOpen(!menuOpen)}
+            className="inline-flex size-8 items-center justify-center rounded-lg border border-zinc-200 bg-white lg:hidden dark:border-white/10 dark:bg-white/5"
+          >
+            <span className="text-sm">{menuOpen ? '✕' : '☰'}</span>
+          </button>
         </div>
       </div>
+      {menuOpen && (
+        <div className="border-t border-zinc-200 bg-white px-4 py-3 dark:border-white/10 dark:bg-zinc-900 lg:hidden">
+          <div className="space-y-1">
+            <a
+              href="#models"
+              onClick={(e) => {
+                e.preventDefault()
+                setMenuOpen(false)
+                document.getElementById('models')?.scrollIntoView({ behavior: 'smooth' })
+              }}
+              className="block rounded-lg px-3 py-2 text-sm hover:bg-zinc-100 dark:hover:bg-white/5"
+            >
+              {t('nav.models')}
+            </a>
+            <a
+              href="#pricing"
+              onClick={(e) => {
+                e.preventDefault()
+                setMenuOpen(false)
+                document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' })
+              }}
+              className="block rounded-lg px-3 py-2 text-sm hover:bg-zinc-100 dark:hover:bg-white/5"
+            >
+              {t('nav.pricing')}
+            </a>
+            <a
+              href="#docs"
+              onClick={(e) => {
+                e.preventDefault()
+                setMenuOpen(false)
+                document.getElementById('docs')?.scrollIntoView({ behavior: 'smooth' })
+              }}
+              className="block rounded-lg px-3 py-2 text-sm hover:bg-zinc-100 dark:hover:bg-white/5"
+            >
+              {t('nav.docs')}
+            </a>
+            <button
+              onClick={() => {
+                setMenuOpen(false)
+                onShowChangelog()
+              }}
+              className="block w-full rounded-lg px-3 py-2 text-left text-sm hover:bg-zinc-100 dark:hover:bg-white/5"
+            >
+              {t('nav.changelog')}
+            </button>
+          </div>
+        </div>
+      )}
     </header>
   )
 }
@@ -373,11 +432,32 @@ function Hero({
           <div className="flex items-center gap-2 text-xs font-medium text-zinc-500">
             <span className="hidden sm:inline">{t('hero.asSeen')}</span>
             <span className="flex items-center gap-3 font-display text-sm font-bold tracking-tight text-zinc-900 dark:text-white">
-              <span className="opacity-60">{t('hero.hackerNews')}</span>
+              <a
+                href="https://news.ycombinator.com"
+                target="_blank"
+                rel="noreferrer"
+                className="opacity-60 hover:opacity-100 hover:underline"
+              >
+                {t('hero.hackerNews')}
+              </a>
               <span className="text-zinc-300 dark:text-white/20">·</span>
-              <span className="opacity-60">{t('hero.productHunt')}</span>
+              <a
+                href="https://www.producthunt.com"
+                target="_blank"
+                rel="noreferrer"
+                className="opacity-60 hover:opacity-100 hover:underline"
+              >
+                {t('hero.productHunt')}
+              </a>
               <span className="text-zinc-300 dark:text-white/20">·</span>
-              <span className="opacity-60">{t('hero.githubTrending')}</span>
+              <a
+                href="https://github.com/trending"
+                target="_blank"
+                rel="noreferrer"
+                className="opacity-60 hover:opacity-100 hover:underline"
+              >
+                {t('hero.githubTrending')}
+              </a>
             </span>
           </div>
           <div className="flex items-center gap-3 text-xs">
@@ -846,7 +926,7 @@ function Benchmarks() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-100 dark:divide-white/5">
-                <tr className="bg-violet-500/[0.03]">
+                <tr className="cursor-pointer bg-violet-500/[0.03] hover:bg-violet-500/5">
                   <td className="px-4 py-3 font-mono text-xs font-bold text-violet-600 dark:text-violet-300">
                     openapi-omni
                   </td>
@@ -943,7 +1023,7 @@ function Benchmarks() {
     </section>
   )
 }
-function Pricing() {
+function Pricing({ onShowMethodology }: { onShowMethodology: () => void }) {
   const { t } = useI18n()
   return (
     <section
@@ -991,7 +1071,11 @@ function Pricing() {
                   [t('pricing.thinker'), '$5.00', '$0.00'],
                   [t('pricing.coder'), '$4.50', '$0.00'],
                 ].map(([name, official, ours]) => (
-                  <div key={name} className="grid grid-cols-3 items-center px-5 py-3 text-sm">
+                  <div
+                    key={name}
+                    onClick={() => document.getElementById('live')?.scrollIntoView({ behavior: 'smooth' })}
+                    className="grid cursor-pointer grid-cols-3 items-center px-5 py-3 text-sm hover:bg-zinc-50 dark:hover:bg-white/5"
+                  >
                     <span className="font-medium text-zinc-900 dark:text-white">{name}</span>
                     <span className="text-center font-mono text-zinc-400 line-through">{official} / 1M</span>
                     <span className="text-right font-mono font-bold text-emerald-600 dark:text-emerald-400">
@@ -1010,9 +1094,9 @@ function Pricing() {
             </div>
             <p className="mt-3 text-center text-xs text-zinc-500 dark:text-zinc-400">
               {t('pricing.compare')}{' '}
-              <a href="#" className="underline">
+              <button onClick={onShowMethodology} className="underline hover:text-zinc-900 dark:hover:text-white">
                 {t('pricing.method')}
-              </a>
+              </button>
             </p>
           </div>
         </div>
@@ -1549,6 +1633,8 @@ export default function App() {
   const [copied, setCopied] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
   const toastRef = useRef<number | null>(null)
+  const [showChangelog, setShowChangelog] = useState(false)
+  const [showMethodology, setShowMethodology] = useState(false)
   useEffect(() => {
     const saved = localStorage.getItem('openapi_key')
     if (saved) setApiKey(saved)
@@ -1591,7 +1677,7 @@ export default function App() {
   if (isPrankster) {
     return (
       <div className="min-h-screen bg-white text-zinc-900 antialiased dark:bg-zinc-950 dark:text-zinc-50">
-        <Header onGetKey={handleGenerate} />
+        <Header onGetKey={handleGenerate} onShowChangelog={() => setShowChangelog(true)} />
         <PranksterConsole />
         <Footer onToast={showToast} />
         <div className="pointer-events-none fixed bottom-4 left-1/2 z-50 -translate-x-1/2">
@@ -1616,19 +1702,25 @@ export default function App() {
           {t('top.claim')}
         </a>
       </div>
-      <Header onGetKey={handleGenerate} />
+      <Header onGetKey={handleGenerate} onShowChangelog={() => setShowChangelog(true)} />
       <main>
         <Hero apiKey={apiKey} onGenerate={handleGenerate} copied={copied} onCopy={handleCopy} />
         <Stats />
         <LiveChat />
         <Models />
         <Benchmarks />
-        <Pricing />
+        <Pricing onShowMethodology={() => setShowMethodology(true)} />
         <HowItWorks />
         <Docs apiKey={apiKey} onGenerate={handleGenerate} />
         <CTA onGetKey={handleGenerate} />
       </main>
       <Footer onToast={showToast} />
+      <button
+        onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+        className="fixed bottom-4 right-4 z-40 rounded-full bg-zinc-900 p-2.5 text-white shadow-lg hover:bg-zinc-800 dark:bg-white dark:text-zinc-900"
+      >
+        ↑
+      </button>
       <div className="pointer-events-none fixed bottom-4 left-1/2 z-50 -translate-x-1/2">
         {toast && (
           <div className="rounded-full bg-zinc-900 px-4 py-2 text-sm font-medium text-white shadow-lg dark:bg-white dark:text-zinc-900">
@@ -1636,6 +1728,71 @@ export default function App() {
           </div>
         )}
       </div>
+      {showChangelog && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm"
+          onClick={() => setShowChangelog(false)}
+        >
+          <div
+            className="max-h-[80vh] w-full max-w-lg overflow-auto rounded-2xl bg-white p-6 shadow-xl dark:bg-zinc-900"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-bold">{t('changelog.title')}</h3>
+              <button
+                onClick={() => setShowChangelog(false)}
+                className="rounded-full bg-zinc-100 p-1.5 dark:bg-white/10"
+              >
+                ✕
+              </button>
+            </div>
+            <p className="mt-1 text-sm text-zinc-500">{t('changelog.desc')}</p>
+            <div className="mt-4 space-y-3 text-sm">
+              <div className="rounded-xl border border-zinc-200 p-3 dark:border-white/10">
+                <div className="font-semibold">v2.1 — 2026-08-24</div>
+                <div className="text-zinc-600 dark:text-zinc-400">openapi-omni 1M→2M context, LiveChat P2P, O logo</div>
+              </div>
+              <div className="rounded-xl border border-zinc-200 p-3 dark:border-white/10">
+                <div className="font-semibold">v2.0 — 2026-08-23</div>
+                <div className="text-zinc-600 dark:text-zinc-400">Self-developed models, bilingual, Benchmarks</div>
+              </div>
+              <div className="rounded-xl border border-zinc-200 p-3 dark:border-white/10">
+                <div className="font-semibold">v1.0 — 2026-08-22</div>
+                <div className="text-zinc-600 dark:text-zinc-400">Initial landing, Cloudflare deploy</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {showMethodology && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm"
+          onClick={() => setShowMethodology(false)}
+        >
+          <div
+            className="max-h-[80vh] w-full max-w-lg overflow-auto rounded-2xl bg-white p-6 shadow-xl dark:bg-zinc-900"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-bold">Methodology</h3>
+              <button
+                onClick={() => setShowMethodology(false)}
+                className="rounded-full bg-zinc-100 p-1.5 dark:bg-white/10"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="mt-4 space-y-2 text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
+              <p>
+                Pricing compared 2026-08-24 vs industry average (GPT-4o $5, Claude $3, Gemini $0.10 etc). Our $0 is
+                entertainment pricing.
+              </p>
+              <p>Benchmarks: MMLU 5-shot, HumanEval 0-shot, temp 0, RULER/MRCR for effective context.</p>
+              <p className="text-xs text-zinc-400">For entertainment purposes only.</p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
