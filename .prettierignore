@@ -1,0 +1,6 @@
+dist
+node_modules
+.docs
+.scripts
+server/node_modules
+package-lock.json

@@ -1,0 +1,40 @@
+# IDE
+.*/
+
+# keep
+!.github/
+!.gitignore
+
+# dependencies
+node_modules/
+dist/
+dist-ssr/
+
+# env
+.env
+.env.local
+.env.*.local
+
+# logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# editor
+.dev.vars
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# vite
+*.tsbuildinfo
+vite.config.*.timestamp-*
