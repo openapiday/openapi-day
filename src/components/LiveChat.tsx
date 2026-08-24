@@ -58,6 +58,10 @@ function getApiBase(): string {
   if (typeof window !== 'undefined') {
     const h = window.location.hostname
     if (h === 'localhost' || h === '127.0.0.1') return 'http://127.0.0.1:8787'
+    if (h.includes('pages.dev')) {
+      const branch = h.split('.')[0]
+      return `https://${branch}-openapi-api.ale160.workers.dev`
+    }
   }
   return 'https://api.openapi.day'
 }
