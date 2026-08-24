@@ -4,7 +4,7 @@ import { useI18n } from '@/lib/i18n.tsx'
 type Assigned = {
   victimId: string
   prompt: string
-  history: any[]
+  history: unknown[]
   model: string
 }
 
@@ -39,10 +39,6 @@ export default function PranksterConsole() {
       alert(isZh ? '请先填写昵称' : 'Please enter nickname')
       return
     }
-    const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-    // Try local API first, fallback to same host
-    const apiHost = (import.meta as any).env?.VITE_API_URL || `${proto}//${window.location.hostname}:8787`
-    const url = `${apiHost.replace(/^http/, 'ws')}/ws/prankster?nickname=${encodeURIComponent(nick)}`
     // For dev, use ws://localhost:8787
     const wsUrl =
       window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
