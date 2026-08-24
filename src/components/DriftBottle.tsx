@@ -1,23 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useI18n } from '@/lib/i18n.tsx'
-
-function getApiBase(): string {
-  try {
-    const env = (import.meta as unknown as { env?: Record<string, string> }).env
-    if (env?.VITE_API_URL) return env.VITE_API_URL.replace(/\/$/, '')
-  } catch {
-    /* ignore */
-  }
-  if (typeof window !== 'undefined') {
-    const h = window.location.hostname
-    if (h === 'localhost' || h === '127.0.0.1') return 'http://127.0.0.1:8787'
-    if (h.includes('pages.dev')) {
-      const branch = h.split('.')[0]
-      return `https://${branch}-openapi-api.ale160.workers.dev`
-    }
-  }
-  return 'https://api.openapi.day'
-}
+import { getApiBase } from '@/config'
 
 export default function DriftBottle() {
   const { lang } = useI18n()
