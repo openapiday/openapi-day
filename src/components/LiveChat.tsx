@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useI18n } from '@/lib/i18n.tsx'
+import { getApiBase } from '@/config'
 import {
   Send,
   Sparkles,
@@ -46,20 +47,6 @@ const CANNED: Record<string, string[]> = {
 
 function genId() {
   return Math.random().toString(36).slice(2, 9)
-}
-
-function getApiBase(): string {
-  try {
-    const env = (import.meta as unknown as { env?: Record<string, string> }).env
-    if (env?.VITE_API_URL) return env.VITE_API_URL.replace(/\/$/, '')
-  } catch {
-    /* ignore */
-  }
-  if (typeof window !== 'undefined') {
-    const h = window.location.hostname
-    if (h === 'localhost' || h === '127.0.0.1') return 'http://127.0.0.1:8787'
-  }
-  return 'https://openapi-api.joydove-ale160.workers.dev'
 }
 
 async function streamFromApi(
