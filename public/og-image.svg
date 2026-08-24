@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <rect width="1200" height="630" fill="#0a0a0f"/>
+  <rect x="60" y="60" width="48" height="48" rx="12" fill="white"/>
+  <text x="84" y="90" text-anchor="middle" font-size="28" font-weight="800" fill="#0a0a0f" font-family="Plus Jakarta Sans, sans-serif">O</text>
+  <text x="130" y="92" font-size="32" font-weight="700" fill="white" font-family="Plus Jakarta Sans, sans-serif">openapi</text>
+  <text x="60" y="200" font-size="64" font-weight="800" fill="white" font-family="Plus Jakarta Sans, sans-serif">One API. Every model.</text>
+  <text x="60" y="260" font-size="64" font-weight="800" fill="white" font-family="Plus Jakarta Sans, sans-serif">Free, forever.</text>
+  <text x="60" y="310" font-size="20" fill="#a1a1aa" font-family="Inter, sans-serif">8 self-developed multimodal · 1M context · 718B MoE · OpenAI-compatible</text>
+  <rect x="60" y="360" width="220" height="48" rx="12" fill="white"/>
+  <text x="170" y="390" text-anchor="middle" font-size="16" font-weight="600" fill="#0a0a0f" font-family="Inter, sans-serif">Try Online — No Key</text>
+  <text x="60" y="480" font-size="14" fill="#52525b" font-family="JetBrains Mono, monospace">openapi.day · 1M context · 86 tok/s · $0 / 1M</text>
+</svg>

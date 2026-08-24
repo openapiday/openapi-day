@@ -48,6 +48,64 @@ function genId() {
   return Math.random().toString(36).slice(2, 9)
 }
 
+function getApiBase(): string {
+  try {
+    const env = (import.meta as unknown as { env?: Record<string, string> }).env
+    if (env?.VITE_API_URL) return env.VITE_API_URL.replace(/\/$/, '')
+  } catch {
+    /* ignore */
+  }
+  if (typeof window !== 'undefined') {
+    const h = window.location.hostname
+    if (h === 'localhost' || h === '127.0.0.1') return 'http://127.0.0.1:8787'
+  }
+  return 'https://openapi-api.joydove-ale160.workers.dev'
+}
+
+async function streamFromApi(
+  model: string,
+  messages: { role: string; content: string }[],
+  onDelta: (t: string) => void,
+  signal?: AbortSignal,
+): Promise<string> {
+  const base = getApiBase()
+  const res = await fetch(`${base}/v1/chat/completions`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ model, messages, stream: true }),
+    signal,
+  })
+  if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`)
+  const reader = res.body.getReader()
+  const decoder = new TextDecoder()
+  let full = ''
+  let buf = ''
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) break
+    buf += decoder.decode(value, { stream: true })
+    const lines = buf.split('\n')
+    buf = lines.pop() || ''
+    for (const line of lines) {
+      const t = line.trim()
+      if (!t.startsWith('data:')) continue
+      const payload = t.slice(5).trim()
+      if (payload === '[DONE]') return full
+      try {
+        const j = JSON.parse(payload)
+        const delta = j.choices?.[0]?.delta?.content ?? ''
+        if (delta) {
+          full += delta
+          onDelta(delta)
+        }
+      } catch {
+        /* ignore */
+      }
+    }
+  }
+  return full
+}
+
 export default function LiveChat({ onToast }: { onToast?: (m: string) => void }) {
   const { lang, t } = useI18n()
   const isZh = lang === 'zh'
@@ -61,7 +119,9 @@ export default function LiveChat({ onToast }: { onToast?: (m: string) => void })
   const [streaming, setStreaming] = useState(false)
   const [typed, setTyped] = useState('')
   const [copiedId, setCopiedId] = useState<string | null>(null)
+  const [useRealApi, setUseRealApi] = useState(true)
   const listRef = useRef<HTMLDivElement>(null)
+  const abortRef = useRef<AbortController | null>(null)
 
   const filteredModels = MODELS.filter((m) => m.label.toLowerCase().includes(modelSearch.toLowerCase()))
 
@@ -88,6 +148,9 @@ export default function LiveChat({ onToast }: { onToast?: (m: string) => void })
   }
 
   const clearChat = () => {
+    abortRef.current?.abort()
+    setStreaming(false)
+    setTyped('')
     setMsgs([{ id: genId(), role: 'assistant', text: CANNED[model][0], model }])
     onToast?.(isZh ? '已清空' : 'Cleared')
   }
@@ -113,52 +176,107 @@ export default function LiveChat({ onToast }: { onToast?: (m: string) => void })
     }
   }
 
-  const regenerate = () => {
-    if (msgs.length === 0) return
-    const lastUser = [...msgs].reverse().find((m) => m.role === 'user')
-    if (!lastUser) return
-    setMsgs((m) => m.filter((x) => x.id !== msgs[msgs.length - 1].id || x.role !== 'assistant'))
-    // trigger new response
-    const candidates = CANNED[model] || CANNED['openapi-omni']
-    const reply = candidates[Math.floor(Math.random() * candidates.length)]
-    const final = reply
-    setStreaming(true)
-    setTyped('')
-    let i = 0
-    const iv = setInterval(() => {
-      i += 1
-      setTyped(final.slice(0, i))
-      if (i >= final.length) {
-        clearInterval(iv)
-        setMsgs((mm) => [...mm, { id: genId(), role: 'assistant', text: final, model }])
-        setStreaming(false)
-        setTyped('')
-      }
-    }, 22)
+  const mockStream = (text: string, targetModel: string) => {
+    return new Promise<void>((resolve) => {
+      let i = 0
+      const iv = setInterval(() => {
+        i += 1
+        setTyped(text.slice(0, i))
+        if (i >= text.length) {
+          clearInterval(iv)
+          setMsgs((m) => [...m, { id: genId(), role: 'assistant', text, model: targetModel }])
+          setStreaming(false)
+          setTyped('')
+          resolve()
+        }
+      }, 22)
+    })
   }
 
-  const send = () => {
+  const regenerate = async () => {
+    if (msgs.length === 0 || streaming) return
+    const lastUser = [...msgs].reverse().find((m) => m.role === 'user')
+    if (!lastUser) return
+    // remove last assistant
+    setMsgs((m) => {
+      let idx = -1
+      for (let i = m.length - 1; i >= 0; i--)
+        if (m[i].role === 'assistant') {
+          idx = i
+          break
+        }
+      if (idx === -1) return m
+      return m.filter((_, i) => i !== idx)
+    })
+    // Re-send
+    let lastAssistantId: string | undefined
+    for (let i = msgs.length - 1; i >= 0; i--)
+      if (msgs[i].role === 'assistant') {
+        lastAssistantId = msgs[i].id
+        break
+      }
+    const history = msgs.filter((m) => m.role !== 'assistant' || m.id !== lastAssistantId)
+    await doSend(lastUser.text, history, true)
+  }
+
+  const doSend = async (userText: string, historyOverride?: Msg[], isRegen = false) => {
+    const baseHistory = historyOverride ?? msgs
+    const apiMessages = [...baseHistory, { id: 'tmp', role: 'user' as const, text: userText, model }]
+      .filter((m) => m.role === 'user' || m.role === 'assistant')
+      .map((m) => ({ role: m.role, content: m.text }))
+
+    setStreaming(true)
+    setTyped('')
+
+    // Try real API if enabled
+    if (useRealApi) {
+      const ac = new AbortController()
+      abortRef.current = ac
+      let acc = ''
+      try {
+        const full = await streamFromApi(
+          model,
+          apiMessages,
+          (delta) => {
+            acc += delta
+            setTyped(acc)
+          },
+          ac.signal,
+        )
+        setMsgs((m) => [...m, { id: genId(), role: 'assistant', text: full || acc, model }])
+        setStreaming(false)
+        setTyped('')
+        return
+      } catch (e) {
+        // Fallback to mock on any error
+        if ((e as Error).name === 'AbortError') {
+          setStreaming(false)
+          setTyped('')
+          return
+        }
+        // fall through to mock
+        onToast?.(isZh ? 'API 暂不可用，已回退本地演示' : 'API unavailable, fallback to demo')
+      }
+    }
+
+    // Mock fallback
+    const candidates = CANNED[model] || CANNED['openapi-omni']
+    const reply = candidates[Math.floor(Math.random() * candidates.length)]
+    const final = isRegen
+      ? reply
+      : userText.length < 20
+        ? reply
+        : `${isZh ? '收到：' : 'Got it: '}"${userText.slice(0, 60)}" — ${reply}`
+    await mockStream(final, model)
+  }
+
+  const send = async () => {
     const v = input.trim()
     if (!v || streaming) return
     const userMsg: Msg = { id: genId(), role: 'user', text: v }
     setMsgs((m) => [...m, userMsg])
     setInput('')
-    const candidates = CANNED[model] || CANNED['openapi-omni']
-    const reply = candidates[Math.floor(Math.random() * candidates.length)]
-    const final = v.length < 20 ? reply : `${isZh ? '收到：' : 'Got it: '}"${v.slice(0, 60)}" — ${reply}`
-    setStreaming(true)
-    setTyped('')
-    let i = 0
-    const iv = setInterval(() => {
-      i += 1
-      setTyped(final.slice(0, i))
-      if (i >= final.length) {
-        clearInterval(iv)
-        setMsgs((m) => [...m, { id: genId(), role: 'assistant', text: final, model }])
-        setStreaming(false)
-        setTyped('')
-      }
-    }, 22)
+    await doSend(v)
   }
 
   const currentModel = MODELS.find((m) => m.id === model)!
@@ -181,6 +299,15 @@ export default function LiveChat({ onToast }: { onToast?: (m: string) => void })
               ? '选择模型，输入即得。无需注册，无需 API Key，打开即用。'
               : 'Pick a model and start typing. No signup, no API key — just chat.'}
           </p>
+          <label className="mt-4 inline-flex cursor-pointer items-center gap-2 text-xs text-zinc-500">
+            <input
+              type="checkbox"
+              checked={useRealApi}
+              onChange={(e) => setUseRealApi(e.target.checked)}
+              className="rounded"
+            />
+            {isZh ? '优先使用线上 API（失败回退本地）' : 'Prefer live API (fallback to demo)'}
+          </label>
         </div>
 
         <div className="mx-auto mt-8 grid max-w-[960px] gap-6 lg:grid-cols-12">
@@ -250,6 +377,14 @@ export default function LiveChat({ onToast }: { onToast?: (m: string) => void })
               <div className="mt-3 flex items-center gap-2 rounded-lg bg-emerald-500/5 px-2.5 py-2 text-xs text-emerald-700 ring-1 ring-emerald-500/20 dark:text-emerald-300">
                 <span className="size-1.5 animate-pulse rounded-full bg-emerald-500" />{' '}
                 {isZh ? '在线 · 全球加速' : 'Online · Global edge'}
+                {useRealApi && (
+                  <span className="ml-auto text-[10px] opacity-60">
+                    {getApiBase()
+                      .replace(/^https?:\/\//, '')
+                      .slice(0, 18)}
+                    …
+                  </span>
+                )}
               </div>
               <div className="mt-3 flex gap-2">
                 <button
@@ -343,7 +478,10 @@ export default function LiveChat({ onToast }: { onToast?: (m: string) => void })
                               <Copy className="size-3" />
                             )}
                           </button>
-                          <button onClick={regenerate} className="rounded p-1 hover:bg-black/5 dark:hover:bg-white/10">
+                          <button
+                            onClick={() => void regenerate()}
+                            className="rounded p-1 hover:bg-black/5 dark:hover:bg-white/10"
+                          >
                             <RotateCcw className="size-3" />
                           </button>
                         </div>
@@ -375,14 +513,14 @@ export default function LiveChat({ onToast }: { onToast?: (m: string) => void })
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' && !e.shiftKey) {
                       e.preventDefault()
-                      send()
+                      void send()
                     }
                   }}
                   placeholder={isZh ? '输入消息…（回车发送）' : 'Type a message… (Enter to send)'}
                   className="flex-1 rounded-xl border border-zinc-200 bg-white px-3.5 py-2.5 text-sm outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 dark:border-white/10 dark:bg-zinc-800"
                 />
                 <button
-                  onClick={send}
+                  onClick={() => void send()}
                   disabled={streaming}
                   className="inline-flex items-center gap-1.5 rounded-xl bg-zinc-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-zinc-800 disabled:opacity-50 dark:bg-white dark:text-zinc-900"
                 >

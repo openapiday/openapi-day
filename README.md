@@ -43,8 +43,8 @@ npm install
 npm run dev        # http://localhost:3025
 npm run check      # typecheck + lint + build
 
-# api
-cd server
+# api (private repo: openapiday/openapi-api)
+cd ../openapi-api
 npm install
 npm run dev        # http://localhost:8787
 ```
@@ -62,17 +62,17 @@ curl -N http://127.0.0.1:8787/v1/chat/completions \
 ## Project Structure
 
 ```
-openapi/
-├── .github/workflows/   # CI (lint / typecheck / build)
-├── public/              # favicon, _headers, _routes.json
-├── src/                 # web landing (React + Tailwind)
-│   ├── components/      # LiveChat, PranksterConsole
-│   ├── lib/             # i18n, utils
-│   └── App.tsx
-└── server/              # API worker (Hono)
+openapi-day/                # this repo (public)
+├── .github/workflows/      # CI (lint / typecheck / build)
+├── public/                 # favicon, _headers, _routes.json, sitemap
+├── src/                    # web landing (React + Tailwind)
+│   ├── components/         # LiveChat, PranksterConsole
+│   ├── lib/                # i18n, utils
+│   └── App.tsx             # landing sections (see src/components/ for splits in T3)
+└── openapi-api/            # private repo openapiday/openapi-api (Hono API)
     └── src/
-        ├── index.ts     # routes: /v1/*, /ws/prankster
-        └── matcher.ts   # request queue + operator pool
+        ├── index.ts        # routes: /v1/*, /ws/prankster
+        └── matcher.ts      # queue + pairing + fallback
 ```
 
 ## Contributing
@@ -82,5 +82,3 @@ Branch from `master`, open a PR. CI must pass; preview deployments are generated
 ## License
 
 MIT
-
-<!-- preview test 2026-08-24T07:43:05.6765393+08:00 -->
