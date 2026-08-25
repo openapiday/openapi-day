@@ -1,8 +1,21 @@
 import { useEffect, useState } from 'react'
-import { ArrowRight, BookOpen, Github, Globe } from 'lucide-react'
+import { ArrowRight, BookOpen, Github, Globe, KeyRound } from 'lucide-react'
 import { useI18n } from '@/lib/i18n.tsx'
+import type { DemoUser } from '@/components/AuthModal.tsx'
 
-export function Header({ onGetKey, onShowChangelog }: { onGetKey: () => void; onShowChangelog: () => void }) {
+export function Header({
+  onGetKey,
+  onShowChangelog,
+  user,
+  onSignIn,
+  onAccount,
+}: {
+  onGetKey: () => void
+  onShowChangelog: () => void
+  user: DemoUser | null
+  onSignIn: () => void
+  onAccount: () => void
+}) {
   const { t, lang, setLang } = useI18n()
   const [menuOpen, setMenuOpen] = useState(false)
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
@@ -99,11 +112,36 @@ export function Header({ onGetKey, onShowChangelog }: { onGetKey: () => void; on
           >
             <BookOpen className="size-4" /> {t('nav.docs')}
           </a>
+          {user ? (
+            <button
+              type="button"
+              onClick={onAccount}
+              className="pressable inline-flex h-8 items-center gap-2 rounded-lg border border-zinc-200 bg-white pl-1.5 pr-2.5 text-xs font-semibold text-zinc-700 transition hover:-translate-y-0.5 hover:bg-zinc-50 dark:border-white/10 dark:bg-white/[0.06] dark:text-zinc-200 dark:hover:bg-white/10"
+              title={user.email}
+            >
+              <span className="flex size-5 items-center justify-center rounded-md bg-gradient-to-br from-violet-500 to-fuchsia-500 text-[10px] font-bold text-white">
+                {(user.name || user.email).slice(0, 1).toUpperCase()}
+              </span>
+              <span className="hidden max-w-24 truncate sm:inline">{user.name}</span>
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={onSignIn}
+              className="pressable hidden h-8 items-center rounded-lg px-2.5 text-sm font-medium text-zinc-600 transition hover:-translate-y-0.5 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-white/[0.06] dark:hover:text-white sm:inline-flex"
+            >
+              {lang === 'zh' ? '登录' : 'Sign in'}
+            </button>
+          )}
           <button
             onClick={onGetKey}
-            className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-zinc-900 px-3.5 text-sm font-medium text-white shadow-sm hover:bg-zinc-800 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-100"
+            className="pressable inline-flex h-8 shrink-0 items-center gap-1 whitespace-nowrap rounded-lg bg-zinc-900 px-2.5 text-xs font-medium text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-zinc-800 hover:shadow-md dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-100 sm:gap-1.5 sm:px-3.5 sm:text-sm"
+            title={user ? 'API Key' : t('nav.getKey')}
           >
-            {t('nav.getKey')} <ArrowRight className="size-3.5" />
+            <KeyRound className="size-3.5 sm:hidden" />
+            <span className="sm:hidden">{user ? 'Key' : lang === 'zh' ? 'Key' : 'Get Key'}</span>
+            <span className="hidden sm:inline">{user ? 'API Key' : t('nav.getKey')}</span>
+            <ArrowRight className="hidden size-3.5 sm:block" />
           </button>
           <button
             onClick={() => setMenuOpen(!menuOpen)}

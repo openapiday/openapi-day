@@ -21,6 +21,7 @@ import {
 type Msg = { id: string; role: 'user' | 'assistant'; text: string; model?: string }
 
 const MODELS = [
+  { id: 'openapi-max', version: 'v3.2', label: 'openapi-max', desc: '3.2T · 1.6M' },
   { id: 'openapi-omni', version: 'v2.1', label: 'openapi-omni v2.1', desc: 'Flagship · 1M' },
   { id: 'openapi-thinker', version: 'v2.0', label: 'openapi-thinker v2.0', desc: 'Reasoning' },
   { id: 'openapi-vision', version: 'v1.8', label: 'openapi-vision v1.8', desc: 'Vision' },
@@ -28,6 +29,9 @@ const MODELS = [
 ]
 
 const CANNED: Record<string, string[]> = {
+  'openapi-max': [
+    "Hi! I'm openapi-max v3.2 — 3.2T parameters, 1.6M context. What impossible problem should we solve today?",
+  ],
   'openapi-omni': [
     "Hello! I'm openapi-omni v2.1 — your flagship omni-modal model. 1M context, 718B MoE. How can I help today?",
     'Great question. Based on my training on 20T tokens, here is a concise take: keep the interface simple while the model handles complexity.',
@@ -98,6 +102,7 @@ export default function LiveChat({ onToast }: { onToast?: (m: string) => void })
   const isZh = lang === 'zh'
   const [model, setModel] = useState(MODELS[0].id)
   const [modelSearch, setModelSearch] = useState('')
+  const [modelMenuOpen, setModelMenuOpen] = useState(false)
   const [msgs, setMsgs] = useState<Msg[]>(() => {
     const m = MODELS[0].id
     return [{ id: genId(), role: 'assistant', text: CANNED[m][0], model: m }]
@@ -106,7 +111,7 @@ export default function LiveChat({ onToast }: { onToast?: (m: string) => void })
   const [streaming, setStreaming] = useState(false)
   const [typed, setTyped] = useState('')
   const [copiedId, setCopiedId] = useState<string | null>(null)
-  const [useRealApi, setUseRealApi] = useState(true)
+  const useRealApi = true
   const listRef = useRef<HTMLDivElement>(null)
   const abortRef = useRef<AbortController | null>(null)
 
@@ -241,8 +246,8 @@ export default function LiveChat({ onToast }: { onToast?: (m: string) => void })
           setTyped('')
           return
         }
-        // fall through to mock
-        onToast?.(isZh ? 'API 暂不可用，已回退本地演示' : 'API unavailable, fallback to demo')
+        // Keep provider configuration and outages invisible on the prank frontend.
+        // Fall through to the canned response without exposing backend requirements.
       }
     }
 
@@ -266,7 +271,11 @@ export default function LiveChat({ onToast }: { onToast?: (m: string) => void })
     await doSend(v)
   }
 
-  const currentModel = MODELS.find((m) => m.id === model)!
+  const currentModel = MODELS.find((m) => m.id === model) ?? MODELS[0]
+
+  useEffect(() => {
+    if (!MODELS.some((candidate) => candidate.id === model)) setModel(MODELS[0].id)
+  }, [model])
 
   return (
     <section
@@ -286,15 +295,6 @@ export default function LiveChat({ onToast }: { onToast?: (m: string) => void })
               ? '选择模型，输入即得。无需注册，无需 API Key，打开即用。'
               : 'Pick a model and start typing. No signup, no API key — just chat.'}
           </p>
-          <label className="mt-4 inline-flex cursor-pointer items-center gap-2 text-xs text-zinc-500">
-            <input
-              type="checkbox"
-              checked={useRealApi}
-              onChange={(e) => setUseRealApi(e.target.checked)}
-              className="rounded"
-            />
-            {isZh ? '优先使用线上 API（失败回退本地）' : 'Prefer live API (fallback to demo)'}
-          </label>
         </div>
 
         <div className="mx-auto mt-8 grid max-w-[960px] gap-6 lg:grid-cols-12">
@@ -313,24 +313,86 @@ export default function LiveChat({ onToast }: { onToast?: (m: string) => void })
                 <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-zinc-400" />
                 <input
                   value={modelSearch}
-                  onChange={(e) => setModelSearch(e.target.value)}
+                  onFocus={() => setModelMenuOpen(true)}
+                  onChange={(e) => {
+                    setModelSearch(e.target.value)
+                    setModelMenuOpen(true)
+                  }}
                   placeholder={t('common.search')}
                   className="w-full rounded-lg border border-zinc-200 bg-zinc-50 py-1.5 pl-8 pr-3 text-xs outline-none placeholder:text-zinc-400 focus:border-violet-500 focus:bg-white focus:ring-2 focus:ring-violet-500/20 dark:border-white/10 dark:bg-white/5 dark:focus:bg-zinc-800"
                 />
               </div>
-              <div className="relative mt-2">
-                <select
-                  value={model}
-                  onChange={(e) => setModel(e.target.value)}
-                  className="w-full appearance-none rounded-xl border border-zinc-200 bg-white px-3 py-2.5 pr-8 text-sm font-medium outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 dark:border-white/10 dark:bg-zinc-800"
+              <div
+                className="mt-2"
+                onKeyDown={(e) => {
+                  if (e.key === 'Escape') setModelMenuOpen(false)
+                }}
+              >
+                <button
+                  type="button"
+                  aria-haspopup="listbox"
+                  aria-expanded={modelMenuOpen}
+                  onClick={() => setModelMenuOpen((open) => !open)}
+                  className="flex w-full items-center justify-between gap-3 rounded-xl border border-zinc-200 bg-white px-3 py-2.5 text-left text-sm font-medium outline-none transition hover:border-zinc-300 hover:bg-zinc-50 focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 dark:border-white/10 dark:bg-zinc-800 dark:hover:border-white/20 dark:hover:bg-zinc-800/80"
                 >
-                  {filteredModels.map((m) => (
-                    <option key={m.id} value={m.id}>
-                      {m.label} · {m.desc}
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 size-4 -translate-y-1/2 text-zinc-400" />
+                  <span className="min-w-0 truncate">
+                    <span className="font-semibold text-zinc-900 dark:text-white">{currentModel.label}</span>
+                    <span className="text-zinc-400"> · </span>
+                    <span className="text-zinc-500 dark:text-zinc-400">{currentModel.desc}</span>
+                  </span>
+                  <ChevronDown
+                    className={`size-4 shrink-0 text-zinc-400 transition-transform ${modelMenuOpen ? 'rotate-180' : ''}`}
+                  />
+                </button>
+                {modelMenuOpen && (
+                  <div
+                    role="listbox"
+                    aria-label={isZh ? '选择模型' : 'Select model'}
+                    className="model-menu-enter mt-2 max-h-56 space-y-1 overflow-y-auto rounded-xl border border-zinc-200 bg-white p-1.5 shadow-[0_12px_30px_-12px_rgba(0,0,0,0.28)] dark:border-white/10 dark:bg-zinc-800"
+                  >
+                    {filteredModels.length > 0 ? (
+                      filteredModels.map((m, index) => {
+                        const selected = m.id === model
+                        return (
+                          <button
+                            key={m.id}
+                            type="button"
+                            role="option"
+                            aria-selected={selected}
+                            onClick={() => {
+                              setModel(m.id)
+                              setModelMenuOpen(false)
+                            }}
+                            style={{ animationDelay: `${index * 38}ms` }}
+                            className={`model-option-enter pressable flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm transition ${
+                              selected
+                                ? 'bg-violet-500/10 text-violet-700 dark:bg-violet-400/10 dark:text-violet-200'
+                                : 'text-zinc-700 hover:bg-zinc-100 dark:text-zinc-200 dark:hover:bg-white/[0.06]'
+                            }`}
+                          >
+                            <span
+                              className={`flex size-5 shrink-0 items-center justify-center rounded-md ${
+                                selected ? 'bg-violet-500 text-white' : 'bg-zinc-100 text-transparent dark:bg-white/10'
+                              }`}
+                            >
+                              <Check className="size-3.5" />
+                            </span>
+                            <span className="min-w-0 flex-1">
+                              <span className="block truncate font-semibold">{m.label}</span>
+                              <span className="block truncate text-[11px] font-normal text-zinc-500 dark:text-zinc-400">
+                                {m.desc}
+                              </span>
+                            </span>
+                          </button>
+                        )
+                      })
+                    ) : (
+                      <div className="px-3 py-5 text-center text-xs text-zinc-500">
+                        {isZh ? '没有匹配的模型' : 'No matching models'}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
               <div className="mt-3 grid grid-cols-3 gap-2 text-[11px]">
                 <button
@@ -340,6 +402,8 @@ export default function LiveChat({ onToast }: { onToast?: (m: string) => void })
                   <div className="font-mono font-bold text-zinc-900 dark:text-white">
                     {currentModel.id === 'openapi-omni'
                       ? '1M'
+                      : currentModel.id === 'openapi-max'
+                        ? '1.6M'
                       : currentModel.id === 'openapi-thinker'
                         ? '256K'
                         : '200K'}

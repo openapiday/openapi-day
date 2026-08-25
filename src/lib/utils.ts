@@ -6,8 +6,11 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export function generateApiKey() {
-  const rand = () => Math.random().toString(36).slice(2, 10)
-  return `sk-openapi-${rand()}-${rand()}`
+  const alphabet = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
+  const bytes = new Uint8Array(32)
+  crypto.getRandomValues(bytes)
+  const token = Array.from(bytes, (byte) => alphabet[byte % alphabet.length]).join('')
+  return `sk-openapi-${token}`
 }
 
 export function copyToClipboard(text: string) {

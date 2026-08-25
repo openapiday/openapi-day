@@ -10,6 +10,16 @@ export type RawModel = {
 }
 export const RAW_MODELS: RawModel[] = [
   {
+    id: 'max',
+    key: 'max',
+    context: '1.6M',
+    price: '$0',
+    officialPrice: '$18.00 / 1M',
+    accent: 'rose',
+    badge: true,
+    version: 'v3.2',
+  },
+  {
     id: 'omni',
     key: 'omni',
     context: '1M',
