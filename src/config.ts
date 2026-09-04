@@ -1,7 +1,7 @@
 /**
  * API base URLs — via Vite env, not hardcoded
  * Set in Cloudflare Pages → Settings → Environment variables:
- *   VITE_API_URL (production: https://api.openapi.day, preview: https://<branch>-openapi-api.ale160.workers.dev)
+ *   VITE_API_URL (production: https://api.openapi.day, preview: https://<branch>-openapi-api.joydove-ale160.workers.dev)
  *   VITE_API_URL_PREVIEW (optional override for Pages preview)
  */
 export function getApiBase(): string {
@@ -16,7 +16,7 @@ export function getApiBase(): string {
       if (h.includes('pages.dev') && env?.VITE_API_URL_PREVIEW) return env.VITE_API_URL_PREVIEW.replace(/\/$/, '')
       if (h.includes('pages.dev')) {
         const branch = h.split('.')[0]
-        return `https://${branch}-openapi-api.ale160.workers.dev`
+        return `https://${branch}-openapi-api.joydove-ale160.workers.dev`
       }
     }
   } catch {
