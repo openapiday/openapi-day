@@ -27,6 +27,8 @@ import LiveChat from '@/components/LiveChat.tsx'
 import PranksterConsole from '@/components/PranksterConsole.tsx'
 import DriftBottle from '@/components/DriftBottle.tsx'
 import { Header } from '@/components/sections/Header.tsx'
+import { AuthModal, type DemoUser } from '@/components/AuthModal.tsx'
+import { ApiKeySection } from '@/components/ApiKeySection.tsx'
 import { RAW_MODELS, ACCENT, type RawModel } from '@/lib/models'
 function useCountdown(targetHour = 0) {
   const [s, setS] = useState('00:00:00')
@@ -617,8 +619,10 @@ function Models() {
                 <div className="rounded-xl bg-zinc-50 p-3 text-center dark:bg-white/5">
                   <div className="text-[11px] tracking-widest text-zinc-500">PARAMS</div>
                   <div className="font-mono text-xs font-bold">
-                    {selected.key === 'omni'
-                      ? '718B MoE'
+                    {selected.key === 'max'
+                      ? '3.2T MoE'
+                      : selected.key === 'omni'
+                        ? '718B MoE'
                       : selected.key === 'vision'
                         ? '120B'
                         : selected.key === 'flash'
@@ -1402,6 +1406,15 @@ function Footer({ onToast }: { onToast: (msg: string) => void }) {
 }
 export default function App() {
   const { t } = useI18n()
+  const [user, setUser] = useState<DemoUser | null>(() => {
+    try {
+      const saved = localStorage.getItem('openapi_demo_user')
+      return saved ? (JSON.parse(saved) as DemoUser) : null
+    } catch {
+      return null
+    }
+  })
+  const [authOpen, setAuthOpen] = useState(false)
   const [apiKey, setApiKey] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
@@ -1418,10 +1431,40 @@ export default function App() {
     toastRef.current = window.setTimeout(() => setToast(null), 2400)
   }
   const handleGenerate = () => {
-    const k = generateApiKey()
-    setApiKey(k)
-    localStorage.setItem('openapi_key', k)
+    if (!user) {
+      setAuthOpen(true)
+      return
+    }
+    if (!apiKey) {
+      const key = generateApiKey()
+      setApiKey(key)
+      localStorage.setItem('openapi_key', key)
+    }
+    window.setTimeout(() => document.getElementById('api-keys')?.scrollIntoView({ behavior: 'smooth' }), 0)
+  }
+  const handleAuthenticate = (nextUser: DemoUser) => {
+    setUser(nextUser)
+    localStorage.setItem('openapi_demo_user', JSON.stringify(nextUser))
+    if (!apiKey) {
+      const key = generateApiKey()
+      setApiKey(key)
+      localStorage.setItem('openapi_key', key)
+    }
     showToast(t('docs.generate'))
+  }
+  const handleRegenerate = () => {
+    const key = generateApiKey()
+    setApiKey(key)
+    localStorage.setItem('openapi_key', key)
+    showToast(t('docs.generate'))
+  }
+  const handleLogout = () => {
+    setUser(null)
+    setApiKey(null)
+    setAuthOpen(false)
+    localStorage.removeItem('openapi_demo_user')
+    localStorage.removeItem('openapi_key')
+    showToast('Signed out')
   }
   const handleCopy = async () => {
     if (!apiKey) return
@@ -1439,7 +1482,7 @@ export default function App() {
     }
     window.addEventListener('keydown', h)
     return () => window.removeEventListener('keydown', h)
-  }, [])
+  }, [apiKey, user])
   const [hash, setHash] = useState(() => (typeof window !== 'undefined' ? window.location.hash : ''))
   useEffect(() => {
     const onHash = () => setHash(window.location.hash)
@@ -1448,35 +1491,61 @@ export default function App() {
   }, [])
   const isPrankster = hash === '#prankster'
   const isDrift = hash === '#drift'
+  const authModal = authOpen ? (
+    <AuthModal
+      user={user}
+      apiKey={apiKey}
+      copied={copied}
+      onClose={() => setAuthOpen(false)}
+      onAuthenticate={handleAuthenticate}
+      onCopy={() => void handleCopy()}
+      onRegenerate={handleRegenerate}
+      onLogout={handleLogout}
+    />
+  ) : null
   if (isPrankster) {
     return (
       <div className="min-h-screen bg-white text-zinc-900 antialiased dark:bg-zinc-950 dark:text-zinc-50">
-        <Header onGetKey={handleGenerate} onShowChangelog={() => setShowChangelog(true)} />
+        <Header
+          onGetKey={handleGenerate}
+          onShowChangelog={() => setShowChangelog(true)}
+          user={user}
+          onSignIn={() => setAuthOpen(true)}
+          onAccount={() => setAuthOpen(true)}
+        />
         <PranksterConsole />
         <Footer onToast={showToast} />
         <div className="pointer-events-none fixed bottom-4 left-1/2 z-50 -translate-x-1/2">
           {toast && (
-            <div className="rounded-full bg-zinc-900 px-4 py-2 text-sm font-medium text-white shadow-lg dark:bg-white dark:text-zinc-900">
+            <div className="toast-pop rounded-full bg-zinc-900 px-4 py-2 text-sm font-medium text-white shadow-lg dark:bg-white dark:text-zinc-900">
               {toast}
             </div>
           )}
         </div>
+        {authModal}
       </div>
     )
   }
   if (isDrift) {
     return (
       <div className="min-h-screen bg-white text-zinc-900 antialiased dark:bg-zinc-950 dark:text-zinc-50">
-        <Header onGetKey={handleGenerate} onShowChangelog={() => setShowChangelog(true)} />
+        <Header
+          onGetKey={handleGenerate}
+          onShowChangelog={() => setShowChangelog(true)}
+          user={user}
+          onSignIn={() => setAuthOpen(true)}
+          onAccount={() => setAuthOpen(true)}
+        />
         <DriftBottle />
         <Footer onToast={showToast} />
         <div className="pointer-events-none fixed bottom-4 left-1/2 z-50 -translate-x-1/2">
           {toast && (
-            <div className="rounded-full bg-zinc-900 px-4 py-2 text-sm font-medium text-white shadow-lg dark:bg-white dark:text-zinc-900">
+            <div className="toast-pop rounded-full bg-zinc-900 px-4 py-2 text-sm font-medium text-white shadow-lg dark:bg-white dark:text-zinc-900">
               {toast}
             </div>
           )}
         </div>
+        {authModal}
       </div>
     )
   }
@@ -1492,11 +1561,27 @@ export default function App() {
           {t('top.claim')}
         </a>
       </div>
-      <Header onGetKey={handleGenerate} onShowChangelog={() => setShowChangelog(true)} />
+      <Header
+        onGetKey={handleGenerate}
+        onShowChangelog={() => setShowChangelog(true)}
+        user={user}
+        onSignIn={() => setAuthOpen(true)}
+        onAccount={() => setAuthOpen(true)}
+      />
       <main>
         <Hero apiKey={apiKey} onGenerate={handleGenerate} copied={copied} onCopy={handleCopy} />
         <Stats />
-        <LiveChat />
+        <LiveChat onToast={showToast} />
+        {user && (
+          <ApiKeySection
+            user={user}
+            apiKey={apiKey}
+            copied={copied}
+            onCopy={() => void handleCopy()}
+            onRegenerate={handleRegenerate}
+            onToast={showToast}
+          />
+        )}
         <Models />
         <Benchmarks />
         <Pricing onShowMethodology={() => setShowMethodology(true)} />
@@ -1513,18 +1598,18 @@ export default function App() {
       </button>
       <div className="pointer-events-none fixed bottom-4 left-1/2 z-50 -translate-x-1/2">
         {toast && (
-          <div className="rounded-full bg-zinc-900 px-4 py-2 text-sm font-medium text-white shadow-lg dark:bg-white dark:text-zinc-900">
+          <div className="toast-pop rounded-full bg-zinc-900 px-4 py-2 text-sm font-medium text-white shadow-lg dark:bg-white dark:text-zinc-900">
             {toast}
           </div>
         )}
       </div>
       {showChangelog && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm"
+          className="auth-backdrop-enter fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm"
           onClick={() => setShowChangelog(false)}
         >
           <div
-            className="max-h-[80vh] w-full max-w-lg overflow-auto rounded-2xl bg-white p-6 shadow-xl dark:bg-zinc-900"
+            className="auth-dialog-enter max-h-[80vh] w-full max-w-lg overflow-auto rounded-2xl bg-white p-6 shadow-xl dark:bg-zinc-900"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between">
@@ -1556,11 +1641,11 @@ export default function App() {
       )}
       {showMethodology && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm"
+          className="auth-backdrop-enter fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm"
           onClick={() => setShowMethodology(false)}
         >
           <div
-            className="max-h-[80vh] w-full max-w-lg overflow-auto rounded-2xl bg-white p-6 shadow-xl dark:bg-zinc-900"
+            className="auth-dialog-enter max-h-[80vh] w-full max-w-lg overflow-auto rounded-2xl bg-white p-6 shadow-xl dark:bg-zinc-900"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between">
@@ -1583,6 +1668,7 @@ export default function App() {
           </div>
         </div>
       )}
+      {authModal}
     </div>
   )
 }
